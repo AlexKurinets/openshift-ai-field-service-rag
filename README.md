@@ -52,10 +52,10 @@ The golden set is 300 questions in seven slices: specs 45, torque 60, intervals 
 | Configuration | Overall | Fault codes | Part numbers | Superseded values | Citations to current text | Gate |
 |---|---|---|---|---|---|---|
 | `production`: hybrid, revision filter | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | baseline |
-| `vector-only` | 74.7 | 31.7 | 83.3 | 100.0 | 100.0 | blocked |
+| `vector-only` | 74.3 | 30.0 | 83.3 | 100.0 | 100.0 | blocked |
 | `no-revision-filter` | 92.0 | 100.0 | 78.6 | 75.0 | 91.7 | blocked |
 
-The 100.0 is not a claim about Granite. The corpus and the questions are generated from the same facts, and the model stand-in is a deterministic extractive reader, so that row shows the plumbing works. The deltas are the point of the table. Vector-only retrieval can't separate fault-code chunks and loses 68 points on that slice. Dropping the revision filter answers some superseded values from the old manual page, and it also loses unchanged values in reissued sections, because those answers cite the superseded page. The gate blocks both.
+The 100.0 is not a claim about Granite. The corpus and the questions are generated from the same facts, and the model stand-in is a deterministic extractive reader, so that row shows the plumbing works. The deltas are the point of the table. Vector-only retrieval can't separate fault-code chunks and loses 70 points on that slice. Dropping the revision filter answers some superseded values from the old manual page, and it also loses unchanged values in reissued sections, because those answers cite the superseded page. The gate blocks both.
 
 ## Running it
 

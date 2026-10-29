@@ -144,6 +144,9 @@ def ingest_documents(pool: ConnectionPool, embedder: ModelClient, docs: list[Doc
         stats["chunks_indexed"] += len(chunks)
     with pool.connection() as conn:
         conn.execute(RECOMPUTE_ACTIVE)
+        # Fresh statistics after a bulk load, so the first queries after a nightly run don't plan on
+        # stale ones (and an evaluation right after ingestion uses the same plan as one an hour later).
+        conn.execute("ANALYZE chunks")
         counts = conn.execute(
             "SELECT count(*) FILTER (WHERE active) AS active, count(*) AS total FROM chunks").fetchone()
     stats["active_chunks"] = counts["active"]
