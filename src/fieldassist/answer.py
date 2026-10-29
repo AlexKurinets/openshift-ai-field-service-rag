@@ -46,10 +46,12 @@ class KnownLines:
     """Product lines with documentation in the index, refreshed at most once a minute."""
 
     def __init__(self, pool: ConnectionPool, ttl: float = 60.0):
-        self.pool, self.ttl, self._at, self._lines = pool, ttl, 0.0, frozenset()
+        # _at starts as None, not 0.0: time.monotonic() counts from boot, so on a host up for less
+        # than ttl seconds a 0.0 start would never look stale and the cache would stay empty.
+        self.pool, self.ttl, self._at, self._lines = pool, ttl, None, frozenset()
 
     def get(self) -> frozenset[str]:
-        if time.monotonic() - self._at > self.ttl:
+        if self._at is None or time.monotonic() - self._at > self.ttl:
             with self.pool.connection() as conn:
                 rows = conn.execute("SELECT DISTINCT product_line FROM documents").fetchall()
             self._lines, self._at = frozenset(r["product_line"] for r in rows), time.monotonic()

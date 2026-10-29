@@ -59,3 +59,9 @@ def test_superseded_value_comes_from_the_bulletin(pool, chat, embedder, known):
     assert not ans.refused and "105 Nm" in ans.text and "95 Nm in a cross pattern" not in ans.text
     assert {c["doc_id"] for c in ans.citations} == {"SB-2026-004"}
     assert all(c["active"] for c in ans.citations)
+
+
+def test_known_lines_load_on_first_use_even_right_after_boot(pool, indexed, monkeypatch):
+    # time.monotonic() counts from boot; a fresh CI runner can be up for less than the cache ttl.
+    monkeypatch.setattr("fieldassist.answer.time.monotonic", lambda: 5.0)
+    assert {"KR-160", "TD-40"} <= KnownLines(pool).get()

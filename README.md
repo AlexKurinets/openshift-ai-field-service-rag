@@ -121,7 +121,7 @@ docker compose up -d postgres
 pytest
 ```
 
-The 58 tests run against real Postgres with pgvector, using the database in `TEST_DATABASE_URL` (default `fieldassist_test` on port 5496, created if missing), with the model stand-in served in-process. They cover the seed's determinism and the golden set's facts, ingestion order and revision handling, RRF and the exact-identifier rule, each refusal path, retries on 503 during rollouts, the gate's thresholds, promotion and the baseline lookup, the API, policy checks on the rendered overlays (they need `kustomize` or `kubectl`), and the compiled pipelines. CI also validates every rendered manifest with kubeconform in strict mode against the CRD schemas for KServe, Kueue, Argo CD and the Prometheus operator. Route and DataSciencePipelinesApplication have no published schema, so they are skipped by name.
+The 59 tests run against real Postgres with pgvector, using the database in `TEST_DATABASE_URL` (default `fieldassist_test` on port 5496, created if missing), with the model stand-in served in-process. They cover the seed's determinism and the golden set's facts, ingestion order and revision handling, RRF and the exact-identifier rule, each refusal path, retries on 503 during rollouts, the gate's thresholds, promotion and the baseline lookup, the API, policy checks on the rendered overlays (they need `kustomize` or `kubectl`), and the compiled pipelines. CI also validates every rendered manifest with kubeconform in strict mode against the CRD schemas for KServe, Kueue, Argo CD and the Prometheus operator. Route and DataSciencePipelinesApplication have no published schema, so they are skipped by name.
 
 ## Layout
 
