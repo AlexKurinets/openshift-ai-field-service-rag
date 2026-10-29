@@ -1,0 +1,9 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: granite-chat
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      serving.kserve.io/inferenceservice: granite-chat

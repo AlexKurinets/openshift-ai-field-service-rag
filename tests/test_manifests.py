@@ -72,6 +72,15 @@ def test_prod_chat_rollout_never_needs_a_gpu_it_does_not_have(overlays):
     assert pred["deploymentStrategy"]["rollingUpdate"] == {"maxSurge": 0, "maxUnavailable": 1}
 
 
+def test_prod_chat_replicas_survive_a_node_drain(overlays):
+    (chat,) = [i for i in of_kind(overlays["prod"], "InferenceService") if i["metadata"]["name"] == "granite-chat"]
+    (rule,) = chat["spec"]["predictor"]["affinity"]["podAntiAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
+    assert rule["topologyKey"] == "kubernetes.io/hostname"
+    (pdb,) = of_kind(overlays["prod"], "PodDisruptionBudget")
+    assert pdb["spec"]["minAvailable"] == 1
+    assert pdb["spec"]["selector"]["matchLabels"] == rule["labelSelector"]["matchLabels"]
+
+
 def test_gpu_budget_fits_two_nodes_of_four_l40s(overlays):
     serving, surge = 0, 0
     for env in ("prod", "dev"):

@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: fieldassist-prod
 resources:
   - namespace.yaml
+  - granite-chat-pdb.yaml
   - ../../base
 images:
   - name: fieldassist
