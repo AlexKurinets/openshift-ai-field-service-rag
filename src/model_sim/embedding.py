@@ -4,7 +4,7 @@ Words and character trigrams are hashed into the vector, so paraphrases that sha
 close together. Identifiers with four or more digits (part numbers, fault codes) are reduced to
 their shape before hashing, so 4471-0213 and 4471-0388 embed identically. That reproduces the
 failure we saw with the real dense model: it put all part-number and fault-code chunks in the same
-neighbourhood and could not tell them apart, which is why retrieval is hybrid.
+neighborhood and could not tell them apart, which is why retrieval is hybrid.
 """
 
 from __future__ import annotations
