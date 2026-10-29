@@ -1,0 +1,4 @@
+# Promotion gate. Points are percentage points on the 300-question golden set.
+max_regression_points: 2.0
+min_questions: 300
+metrics: [accuracy, recall_at_k]

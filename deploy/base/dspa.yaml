@@ -1,0 +1,20 @@
+# Data Science Pipelines (Kubeflow Pipelines v2) for this project. Artifacts go to an S3 bucket on the
+# cluster's object storage; the credentials secret is created out of band.
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+spec:
+  dspVersion: v2
+  apiServer:
+    deploy: true
+    enableSamplePipeline: false
+  objectStorage:
+    externalStorage:
+      host: s3.openshift-storage.svc
+      scheme: https
+      bucket: fieldassist-pipelines
+      s3CredentialsSecret:
+        secretName: dspa-s3
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY

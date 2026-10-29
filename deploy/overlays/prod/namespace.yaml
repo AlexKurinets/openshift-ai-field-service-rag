@@ -1,0 +1,11 @@
+# An OpenShift AI data science project: the dashboard label makes it show up in the console, and
+# modelmesh-enabled "false" puts it on the single-model (KServe) serving platform.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fieldassist-prod
+  labels:
+    opendatahub.io/dashboard: "true"
+    modelmesh-enabled: "false"
+  annotations:
+    openshift.io/display-name: Field service assistant (prod)

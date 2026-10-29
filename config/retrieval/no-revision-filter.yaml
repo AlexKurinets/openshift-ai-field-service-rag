@@ -1,0 +1,10 @@
+# Hybrid retrieval that also searches superseded sections, as before revision tracking.
+name: no-revision-filter
+mode: hybrid
+active_only: false
+candidates_per_retriever: 20
+top_k: 5
+rrf_k: 60
+min_similarity: 0.2
+prompt_version: v3
+max_tokens: 400

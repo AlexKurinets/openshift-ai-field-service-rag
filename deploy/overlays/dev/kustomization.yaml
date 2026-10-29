@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fieldassist-dev
+resources:
+  - namespace.yaml
+  - ../../base
+images:
+  - name: fieldassist
+    newName: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist
+    newTag: main
+# Candidates are deployed here by hand or by CI and evaluated against prod's baseline before anything
+# is written to the prod overlay.
+configMapGenerator:
+  - name: fieldassist-retrieval
+    files:
+      - retrieval.yaml
+patches:
+  - path: granite-chat-model.yaml
+  - path: granite-embed-model.yaml
+  - target:
+      kind: Deployment
+      name: fieldassist-gateway
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1

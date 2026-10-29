@@ -1,0 +1,47 @@
+# vLLM exposes Prometheus metrics on its serving port; user workload monitoring scrapes them.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: vllm
+spec:
+  selector:
+    matchExpressions:
+      - key: serving.kserve.io/inferenceservice
+        operator: Exists
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: vllm-serving
+spec:
+  groups:
+    - name: vllm-serving
+      rules:
+        - alert: TimeToFirstTokenP95High
+          expr: |
+            histogram_quantile(0.95, sum by (le, model_name) (
+              rate(vllm:time_to_first_token_seconds_bucket[5m]))) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: p95 time to first token above 1 s for 10 minutes on {{ $labels.model_name }}
+        - alert: KVCacheNearlyFull
+          # Renamed from gpu_cache_usage_perc in newer vLLM releases; match either.
+          expr: max by (model_name) (vllm:kv_cache_usage_perc or vllm:gpu_cache_usage_perc) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: KV cache above 90% on {{ $labels.model_name }}, so requests will queue
+        - alert: RequestsQueueing
+          expr: sum by (model_name) (vllm:num_requests_waiting) > 10
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: more than 10 requests waiting on {{ $labels.model_name }}

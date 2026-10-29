@@ -1,0 +1,45 @@
+# vLLM runtime for KServe single-model serving, adapted from the OpenShift AI template. The image is
+# a mirror of the one the template ships, pinned by digest. Model-specific flags live on each
+# InferenceService, so one runtime serves both the chat and the embedding model.
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: vllm-runtime
+  annotations:
+    openshift.io/display-name: vLLM ServingRuntime for KServe
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  multiModel: false
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/path: /metrics
+  supportedModelFormats:
+    - name: vLLM
+      autoSelect: true
+  containers:
+    - name: kserve-container
+      image: registry.example.com/mirror/vllm-openai-cuda@sha256:9c2f4e8a1b7d3c6f0e5a9b2d8c4f1a7e3b6d0c9f2a5e8b1d4c7f0a3e6b9d2c5f
+      command: ["python", "-m", "vllm.entrypoints.openai.api_server"]
+      args:
+        - --port=8080
+        - --model=/mnt/models
+        - --served-model-name={{.Name}}
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+        - name: HF_HUB_OFFLINE
+          value: "1"
+      ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+      volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi

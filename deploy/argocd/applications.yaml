@@ -1,0 +1,57 @@
+# OpenShift GitOps (Argo CD) applications. Prod syncs automatically: the approval step is the merge of
+# the promotion pull request, not a click in the Argo CD console.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fieldassist-cluster
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexKurinets/openshift-ai-field-service-rag.git
+    targetRevision: main
+    path: deploy/cluster
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fieldassist-dev
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexKurinets/openshift-ai-field-service-rag.git
+    targetRevision: main
+    path: deploy/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fieldassist-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fieldassist-prod
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexKurinets/openshift-ai-field-service-rag.git
+    targetRevision: main
+    path: deploy/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fieldassist-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

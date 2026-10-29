@@ -1,0 +1,10 @@
+# The configuration serving prod: what the golden-set gate compares every candidate against.
+name: production
+mode: hybrid
+active_only: true
+candidates_per_retriever: 20
+top_k: 5
+rrf_k: 60
+min_similarity: 0.2
+prompt_version: v3
+max_tokens: 400

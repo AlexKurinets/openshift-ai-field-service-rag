@@ -1,0 +1,37 @@
+# Granite embedding model (768 dimensions) on the same vLLM runtime, which detects the encoder
+# architecture and serves /v1/embeddings.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-embed
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    security.opendatahub.io/enable-auth: "true"
+    openshift.io/display-name: granite-embed
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    model:
+      runtime: vllm-runtime
+      modelFormat:
+        name: vLLM
+      storageUri: oci://set-by-overlay
+      args:
+        - --max-model-len=512
+        - --gpu-memory-utilization=0.50
+      resources:
+        requests:
+          cpu: "2"
+          memory: 8Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpu: "1"

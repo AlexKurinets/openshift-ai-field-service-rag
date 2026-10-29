@@ -1,0 +1,8 @@
+# Workbenches, eval jobs and fine-tuning experiments submit here. Their GPUs come from the shared
+# ClusterQueue in deploy/cluster, not from the serving budget.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: fieldassist
+spec:
+  clusterQueue: data-science-gpu

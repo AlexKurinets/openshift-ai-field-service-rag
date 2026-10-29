@@ -1,0 +1,31 @@
+# Only the gateway and pipeline task pods in this namespace may call the model servers, plus the
+# user workload monitoring stack for /metrics.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: model-servers-from-gateway-and-pipelines
+spec:
+  podSelector:
+    matchExpressions:
+      - key: serving.kserve.io/inferenceservice
+        operator: In
+        values: [granite-chat, granite-embed]
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: fieldassist-gateway
+        - podSelector:
+            matchLabels:
+              pipelines.kubeflow.org/v2_component: "true"
+      ports:
+        - port: 8080
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-user-workload-monitoring
+      ports:
+        - port: 8080
+          protocol: TCP

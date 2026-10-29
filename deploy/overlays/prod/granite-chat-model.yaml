@@ -1,0 +1,11 @@
+# Written by `fieldassist promote` from eval-20261029-021110-8146f1. Do not edit by hand.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-chat
+  annotations:
+    fieldassist.example.com/eval-run: eval-20261029-021110-8146f1
+spec:
+  predictor:
+    model:
+      storageUri: oci://quay.example.com/fieldassist/granite-3.3-8b-instruct@sha256:4f1c0d9a7e2b5c8d3a6f9e1b4c7d0a3f6e9b2c5d8a1f4e7b0c3d6a9f2e5b8c1d

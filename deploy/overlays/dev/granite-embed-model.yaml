@@ -1,0 +1,13 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-embed
+spec:
+  predictor:
+    deploymentStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+    model:
+      storageUri: oci://quay.example.com/fieldassist/granite-embedding-125m-english@sha256:7d2a9f4c1e8b5a3d0f6c9e2b7a4d1f8c5e0b3a6d9f2c7e4a1b8d5f0c3e6a9b2d

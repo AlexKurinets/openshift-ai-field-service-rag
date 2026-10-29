@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fieldassist-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fieldassist-gateway
+  template:
+    metadata:
+      labels:
+        app: fieldassist-gateway
+    spec:
+      serviceAccountName: fieldassist-gateway
+      containers:
+        - name: gateway
+          image: fieldassist
+          command: ["uvicorn", "--factory", "fieldassist.api:create_app", "--host", "0.0.0.0", "--port", "8080"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: FA_CHAT_URL
+              value: http://granite-chat-predictor:8080
+            - name: FA_EMBED_URL
+              value: http://granite-embed-predictor:8080
+            - name: FA_RETRIEVAL_CONFIG
+              value: /etc/fieldassist/retrieval.yaml
+            - name: FA_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fieldassist-db
+                  key: url
+            - name: FA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: fieldassist-api
+                  key: token
+            - name: FA_MODEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: fieldassist-model-token
+                  key: token
+          volumeMounts:
+            - name: retrieval
+              mountPath: /etc/fieldassist
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: retrieval
+          configMap:
+            name: fieldassist-retrieval
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fieldassist-gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fieldassist-gateway
+spec:
+  selector:
+    app: fieldassist-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

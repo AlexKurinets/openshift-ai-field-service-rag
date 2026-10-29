@@ -1,0 +1,356 @@
+# PIPELINE DEFINITION
+# Name: fieldassist-eval-gate
+# Description: Golden-set evaluation of a candidate, slice-by-slice gate, promotion on pass.
+# Inputs:
+#    candidate_chat_url: str [Default: 'http://granite-chat-predictor.fieldassist-dev.svc:8080']
+#    candidate_config: str [Default: 'config/retrieval/production.yaml']
+#    candidate_model_image: str
+#    environment: str [Default: 'prod']
+components:
+  comp-condition-1:
+    dag:
+      tasks:
+        promote:
+          cachingOptions: {}
+          componentRef:
+            name: comp-promote
+          inputs:
+            artifacts:
+              baseline:
+                componentInputArtifact: pipelinechannel--fetch-baseline-report
+              candidate:
+                componentInputArtifact: pipelinechannel--evaluate-report
+            parameters:
+              environment:
+                componentInputParameter: pipelinechannel--environment
+          taskInfo:
+            name: write prod overlay
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--evaluate-report:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        pipelinechannel--fetch-baseline-report:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--environment:
+          parameterType: STRING
+        pipelinechannel--gate-decision:
+          parameterType: STRING
+  comp-evaluate:
+    executorLabel: exec-evaluate
+    inputDefinitions:
+      parameters:
+        chat_url:
+          parameterType: STRING
+        config_path:
+          parameterType: STRING
+        model_image:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        report:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-fetch-baseline:
+    executorLabel: exec-fetch-baseline
+    inputDefinitions:
+      parameters:
+        environment:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        report:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-gate:
+    executorLabel: exec-gate
+    inputDefinitions:
+      artifacts:
+        baseline:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        candidate:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      parameters:
+        decision:
+          parameterType: STRING
+  comp-promote:
+    executorLabel: exec-promote
+    inputDefinitions:
+      artifacts:
+        baseline:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        candidate:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        environment:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        diff:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate:
+      container:
+        args:
+        - --config
+        - '{{$.inputs.parameters[''config_path'']}}'
+        - --model-image
+        - '{{$.inputs.parameters[''model_image'']}}'
+        - --chat-url
+        - '{{$.inputs.parameters[''chat_url'']}}'
+        - --out
+        - '{{$.outputs.artifacts[''report''].path}}'
+        command:
+        - fieldassist
+        - eval
+        env:
+        - name: FA_CHAT_URL
+          value: http://granite-chat-predictor:8080
+        - name: FA_EMBED_URL
+          value: http://granite-embed-predictor:8080
+        image: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist:main
+    exec-fetch-baseline:
+      container:
+        args:
+        - --environment
+        - '{{$.inputs.parameters[''environment'']}}'
+        - --out
+        - '{{$.outputs.artifacts[''report''].path}}'
+        command:
+        - fieldassist
+        - baseline
+        env:
+        - name: FA_CHAT_URL
+          value: http://granite-chat-predictor:8080
+        - name: FA_EMBED_URL
+          value: http://granite-embed-predictor:8080
+        image: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist:main
+    exec-gate:
+      container:
+        args:
+        - --baseline
+        - '{{$.inputs.artifacts[''baseline''].path}}'
+        - --candidate
+        - '{{$.inputs.artifacts[''candidate''].path}}'
+        - --decision-out
+        - '{{$.outputs.parameters[''decision''].output_file}}'
+        - --no-fail
+        command:
+        - fieldassist
+        - gate
+        env:
+        - name: FA_CHAT_URL
+          value: http://granite-chat-predictor:8080
+        - name: FA_EMBED_URL
+          value: http://granite-embed-predictor:8080
+        image: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist:main
+    exec-promote:
+      container:
+        args:
+        - fieldassist promote --baseline "$0" --candidate "$1" --environment "$2"
+          | tee "$3"
+        - '{{$.inputs.artifacts[''baseline''].path}}'
+        - '{{$.inputs.artifacts[''candidate''].path}}'
+        - '{{$.inputs.parameters[''environment'']}}'
+        - '{{$.outputs.artifacts[''diff''].path}}'
+        command:
+        - sh
+        - -c
+        env:
+        - name: FA_CHAT_URL
+          value: http://granite-chat-predictor:8080
+        - name: FA_EMBED_URL
+          value: http://granite-embed-predictor:8080
+        image: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist:main
+pipelineInfo:
+  description: Golden-set evaluation of a candidate, slice-by-slice gate, promotion
+    on pass.
+  name: fieldassist-eval-gate
+root:
+  dag:
+    tasks:
+      condition-1:
+        componentRef:
+          name: comp-condition-1
+        dependentTasks:
+        - evaluate
+        - fetch-baseline
+        - gate
+        inputs:
+          artifacts:
+            pipelinechannel--evaluate-report:
+              taskOutputArtifact:
+                outputArtifactKey: report
+                producerTask: evaluate
+            pipelinechannel--fetch-baseline-report:
+              taskOutputArtifact:
+                outputArtifactKey: report
+                producerTask: fetch-baseline
+          parameters:
+            pipelinechannel--environment:
+              componentInputParameter: environment
+            pipelinechannel--gate-decision:
+              taskOutputParameter:
+                outputParameterKey: decision
+                producerTask: gate
+        taskInfo:
+          name: gate-passed
+        triggerPolicy:
+          condition: inputs.parameter_values['pipelinechannel--gate-decision'] ==
+            'pass'
+      evaluate:
+        cachingOptions: {}
+        componentRef:
+          name: comp-evaluate
+        inputs:
+          parameters:
+            chat_url:
+              componentInputParameter: candidate_chat_url
+            config_path:
+              componentInputParameter: candidate_config
+            model_image:
+              componentInputParameter: candidate_model_image
+        taskInfo:
+          name: golden set on candidate
+      fetch-baseline:
+        cachingOptions: {}
+        componentRef:
+          name: comp-fetch-baseline
+        inputs:
+          parameters:
+            environment:
+              componentInputParameter: environment
+        taskInfo:
+          name: 'baseline: run serving prod'
+      gate:
+        cachingOptions: {}
+        componentRef:
+          name: comp-gate
+        dependentTasks:
+        - evaluate
+        - fetch-baseline
+        inputs:
+          artifacts:
+            baseline:
+              taskOutputArtifact:
+                outputArtifactKey: report
+                producerTask: fetch-baseline
+            candidate:
+              taskOutputArtifact:
+                outputArtifactKey: report
+                producerTask: evaluate
+        taskInfo:
+          name: gate
+  inputDefinitions:
+    parameters:
+      candidate_chat_url:
+        defaultValue: http://granite-chat-predictor.fieldassist-dev.svc:8080
+        isOptional: true
+        parameterType: STRING
+      candidate_config:
+        defaultValue: config/retrieval/production.yaml
+        isOptional: true
+        parameterType: STRING
+      candidate_model_image:
+        parameterType: STRING
+      environment:
+        defaultValue: prod
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.18.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-evaluate:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: FA_DATABASE_URL
+              secretKey: url
+            optional: false
+            secretName: fieldassist-db
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-db
+          - keyToEnv:
+            - envVar: FA_MODEL_TOKEN
+              secretKey: token
+            optional: false
+            secretName: fieldassist-model-token
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-model-token
+        exec-fetch-baseline:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: FA_DATABASE_URL
+              secretKey: url
+            optional: false
+            secretName: fieldassist-db
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-db
+          - keyToEnv:
+            - envVar: FA_MODEL_TOKEN
+              secretKey: token
+            optional: false
+            secretName: fieldassist-model-token
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-model-token
+        exec-gate:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: FA_DATABASE_URL
+              secretKey: url
+            optional: false
+            secretName: fieldassist-db
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-db
+          - keyToEnv:
+            - envVar: FA_MODEL_TOKEN
+              secretKey: token
+            optional: false
+            secretName: fieldassist-model-token
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-model-token
+        exec-promote:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: FA_DATABASE_URL
+              secretKey: url
+            optional: false
+            secretName: fieldassist-db
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-db
+          - keyToEnv:
+            - envVar: FA_MODEL_TOKEN
+              secretKey: token
+            optional: false
+            secretName: fieldassist-model-token
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-model-token

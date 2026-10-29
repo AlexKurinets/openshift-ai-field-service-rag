@@ -1,0 +1,164 @@
+# PIPELINE DEFINITION
+# Name: fieldassist-nightly-ingest
+# Description: Parse, chunk, embed and index service documents; then evaluate prod's configuration.
+# Inputs:
+#    config_path: str [Default: 'deploy/overlays/prod/retrieval.yaml']
+#    corpus_dir: str [Default: 'data/corpus']
+#    model_image: str [Default: 'deployed-prod']
+components:
+  comp-evaluate:
+    executorLabel: exec-evaluate
+    inputDefinitions:
+      parameters:
+        chat_url:
+          parameterType: STRING
+        config_path:
+          parameterType: STRING
+        model_image:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        report:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-ingest:
+    executorLabel: exec-ingest
+    inputDefinitions:
+      parameters:
+        corpus_dir:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        stats:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate:
+      container:
+        args:
+        - --config
+        - '{{$.inputs.parameters[''config_path'']}}'
+        - --model-image
+        - '{{$.inputs.parameters[''model_image'']}}'
+        - --chat-url
+        - '{{$.inputs.parameters[''chat_url'']}}'
+        - --out
+        - '{{$.outputs.artifacts[''report''].path}}'
+        command:
+        - fieldassist
+        - eval
+        env:
+        - name: FA_CHAT_URL
+          value: http://granite-chat-predictor:8080
+        - name: FA_EMBED_URL
+          value: http://granite-embed-predictor:8080
+        image: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist:main
+    exec-ingest:
+      container:
+        args:
+        - fieldassist ingest --corpus "$0" | tee "$1"
+        - '{{$.inputs.parameters[''corpus_dir'']}}'
+        - '{{$.outputs.artifacts[''stats''].path}}'
+        command:
+        - sh
+        - -c
+        env:
+        - name: FA_CHAT_URL
+          value: http://granite-chat-predictor:8080
+        - name: FA_EMBED_URL
+          value: http://granite-embed-predictor:8080
+        image: image-registry.openshift-image-registry.svc:5000/fieldassist-dev/fieldassist:main
+pipelineInfo:
+  description: Parse, chunk, embed and index service documents; then evaluate prod's
+    configuration.
+  name: fieldassist-nightly-ingest
+root:
+  dag:
+    tasks:
+      evaluate:
+        cachingOptions: {}
+        componentRef:
+          name: comp-evaluate
+        dependentTasks:
+        - ingest
+        inputs:
+          parameters:
+            chat_url:
+              runtimeValue:
+                constant: http://granite-chat-predictor:8080
+            config_path:
+              componentInputParameter: config_path
+            model_image:
+              componentInputParameter: model_image
+        taskInfo:
+          name: golden set on prod config
+      ingest:
+        cachingOptions: {}
+        componentRef:
+          name: comp-ingest
+        inputs:
+          parameters:
+            corpus_dir:
+              componentInputParameter: corpus_dir
+        taskInfo:
+          name: ingest documents
+  inputDefinitions:
+    parameters:
+      config_path:
+        defaultValue: deploy/overlays/prod/retrieval.yaml
+        isOptional: true
+        parameterType: STRING
+      corpus_dir:
+        defaultValue: data/corpus
+        isOptional: true
+        parameterType: STRING
+      model_image:
+        defaultValue: deployed-prod
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.18.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-evaluate:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: FA_DATABASE_URL
+              secretKey: url
+            optional: false
+            secretName: fieldassist-db
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-db
+          - keyToEnv:
+            - envVar: FA_MODEL_TOKEN
+              secretKey: token
+            optional: false
+            secretName: fieldassist-model-token
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-model-token
+        exec-ingest:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: FA_DATABASE_URL
+              secretKey: url
+            optional: false
+            secretName: fieldassist-db
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-db
+          - keyToEnv:
+            - envVar: FA_MODEL_TOKEN
+              secretKey: token
+            optional: false
+            secretName: fieldassist-model-token
+            secretNameParameter:
+              runtimeValue:
+                constant: fieldassist-model-token

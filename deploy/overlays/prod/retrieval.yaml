@@ -1,0 +1,10 @@
+# Written by `fieldassist promote` from eval-20261029-021110-8146f1. Do not edit by hand.
+name: production
+mode: hybrid
+active_only: true
+candidates_per_retriever: 20
+top_k: 5
+rrf_k: 60
+min_similarity: 0.2
+prompt_version: v3
+max_tokens: 400

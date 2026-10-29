@@ -1,0 +1,63 @@
+# Local stand-in for the OpenShift AI project: Postgres with pgvector, one OpenAI-compatible model
+# server standing in for the two vLLM InferenceServices, and the gateway. The gateway ingests the
+# synthetic corpus on start (idempotent) and reports ready once the index and both models answer.
+name: fieldassist
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: fieldassist
+      POSTGRES_PASSWORD: fieldassist
+      POSTGRES_DB: fieldassist
+    ports:
+      - "${POSTGRES_PORT:-5496}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldassist -d fieldassist"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  models:
+    build: .
+    image: fieldassist:local
+    command: ["uvicorn", "model_sim.app:app", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      SIM_TOKEN: local-model-token
+    ports:
+      - "${MODELS_PORT:-8171}:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  gateway:
+    build: .
+    image: fieldassist:local
+    command: ["sh", "-c", "fieldassist ingest && exec uvicorn --factory fieldassist.api:create_app --host 0.0.0.0 --port 8080"]
+    environment:
+      FA_DATABASE_URL: postgresql://fieldassist:fieldassist@postgres:5432/fieldassist
+      FA_CHAT_URL: http://models:8080
+      FA_EMBED_URL: http://models:8080
+      FA_MODEL_TOKEN: local-model-token
+      FA_API_TOKEN: ${FA_API_TOKEN:-local-dev-token}
+      FA_RETRIEVAL_CONFIG: deploy/overlays/prod/retrieval.yaml
+    ports:
+      - "${API_PORT:-8170}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      models:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/readyz')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  pgdata:

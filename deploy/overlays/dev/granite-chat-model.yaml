@@ -1,0 +1,13 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-chat
+spec:
+  predictor:
+    deploymentStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+    model:
+      storageUri: oci://quay.example.com/fieldassist/granite-3.3-8b-instruct@sha256:4f1c0d9a7e2b5c8d3a6f9e1b4c7d0a3f6e9b2c5d8a1f4e7b0c3d6a9f2e5b8c1d

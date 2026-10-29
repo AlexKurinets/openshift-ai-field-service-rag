@@ -1,0 +1,34 @@
+# Two GPU nodes with four NVIDIA L40S each, 8 GPUs. Serving takes 5 (prod chat x2, prod embed, dev
+# chat, dev embed), 1 stays free so a single-replica model server can surge during a rollout, and 2
+# are shared through Kueue by workbenches, eval jobs and fine-tuning experiments.
+# tests/test_manifests.py checks that arithmetic against the rendered overlays.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: nvidia-l40s
+spec:
+  nodeLabels:
+    nvidia.com/gpu.product: NVIDIA-L40S
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: data-science-gpu
+spec:
+  namespaceSelector: {}
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+      flavors:
+        - name: nvidia-l40s
+          resources:
+            - name: cpu
+              nominalQuota: "32"
+            - name: memory
+              nominalQuota: 256Gi
+            - name: nvidia.com/gpu
+              nominalQuota: "2"

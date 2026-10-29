@@ -1,0 +1,16 @@
+# Two replicas in prod, one GPU each. maxSurge 0 / maxUnavailable 1: a rollout replaces one replica at
+# a time inside the same two GPUs, so it never waits on a GPU that isn't there, and the other replica
+# keeps serving throughout.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-chat
+spec:
+  predictor:
+    minReplicas: 2
+    maxReplicas: 2
+    deploymentStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1

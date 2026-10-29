@@ -1,0 +1,41 @@
+# Granite 3.3 8B Instruct, bf16 on one L40S (48 GB) per replica. RawDeployment, never scaled to zero:
+# under Serverless with scale-to-zero, pulling ~16 GB of weights made the first request of the day
+# time out. Weights ship as an OCI modelcar image pinned by digest, so nodes cache them like any other
+# image and the model that passed the gate is the model that runs. The overlays set storageUri.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-chat
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    security.opendatahub.io/enable-auth: "true"
+    openshift.io/display-name: granite-chat
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    model:
+      runtime: vllm-runtime
+      modelFormat:
+        name: vLLM
+      storageUri: oci://set-by-overlay
+      args:
+        - --max-model-len=8192
+        - --gpu-memory-utilization=0.90
+        - --enable-prefix-caching
+        - --max-num-seqs=64
+      resources:
+        requests:
+          cpu: "4"
+          memory: 24Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "8"
+          memory: 40Gi
+          nvidia.com/gpu: "1"

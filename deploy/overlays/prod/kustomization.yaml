@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fieldassist-prod
+resources:
+  - namespace.yaml
+  - ../../base
+images:
+  - name: fieldassist
+    newName: image-registry.openshift-image-registry.svc:5000/fieldassist-prod/fieldassist
+    digest: sha256:3b8e1f6a9c2d5e0b7a4f1c8d3e6b9a2f5c0d7e4b1a8f3c6e9d2b5a0f7c4e1d8b
+# The retrieval config and the chat model image are written by `fieldassist promote` after the
+# golden-set gate passes; the hash suffix on the generated ConfigMap rolls the gateway on change.
+configMapGenerator:
+  - name: fieldassist-retrieval
+    files:
+      - retrieval.yaml
+patches:
+  - path: granite-chat-model.yaml
+  - path: granite-chat-replicas.yaml
+  - path: granite-embed-model.yaml
